@@ -47,18 +47,21 @@ EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstring>
 #include <CL/cl.h>
 #include "sys/time.h"
-#include </usr/include/opencv2/opencv.hpp>
-//#include </usr/include/opencv2/core/mat.hpp>
-//#include "/usr/include/opencv2/imgproc/imgproc.hpp"
+#include "/usr/include/opencv2/opencv.hpp"
+//#include "/usr/include/opencv2/core/mat.hpp"
+#include "/usr/include/opencv2/imgproc/imgproc.hpp"
+
 // OpenCV includes
 //#include "/usr/include/opencv2/core/core.hpp"
 //#include "/usr/include/opencv2/highgui/highgui.hpp"
-
-
+//#include <opencv2/core/core.hpp>
+//#include <opencv2/highgui/highgui.hpp>
 //#include "/usr/include/opencv2/opencv.hpp"
 
 // XCL Helper Library
 //#include <xcl2.hpp>
+
+
 double timestamp(){
 double ms=0.0;
 timeval time;
@@ -69,24 +72,36 @@ return ms;
 
 }
 
-short getAbsMax(cv::Mat mat, size_t rows, size_t cols) {
+struct Mat {
+int rows;
+int cols;
+int type;
+
+
+
+}mat;
+
+short getAbsMax( /*cv::*/Mat mat, size_t rows, size_t cols) {
 	short max = 0;
 
 	for(size_t r = 0; r < rows; r++) {
 		for(size_t c = 0; c < cols; c++) {
-			short tmp = std::abs(mat.at<short>(r,c));
+			/*short tmp = std::abs(mat.at<short>(r,c));
 			if(tmp > max) {
 				max = tmp;
-			}
+			}*/
 		}
 	}
 
 	return max;
 }
 
-cv::Mat readTxtFile(std::string fileName, size_t rows, size_t cols) {
+/*cv::*/Mat readTxtFile(std::string fileName, size_t rows, size_t cols) {
 
-    cv::Mat mat(rows, cols, CV_16S);
+    //cv::Mat mat(rows, cols, CV_16S);
+ 	mat.rows=rows;
+	mat.cols=cols;
+	mat.type=CV_16S;
 
     std::ifstream txtFile(fileName.c_str());
 
@@ -97,17 +112,20 @@ cv::Mat readTxtFile(std::string fileName, size_t rows, size_t cols) {
 
     for(size_t r = 0; r < rows; r++) {
         for(size_t c = 0; c < cols; c++) {
-            txtFile >> mat.at<short>(r,c);
+            //txtFile >> mat.at<short>(r,c);
         }
     }
 
-    return mat;
+   return mat;
+      
 }
 
-cv::Mat readFloatTxtFile(std::string fileName, size_t rows, size_t cols) {
+/*cv::*/Mat readFloatTxtFile(std::string fileName, size_t rows, size_t cols) {
 
-    cv::Mat mat(rows, cols, CV_32F);
-
+   // cv::Mat mat(rows, cols, CV_32F);
+   mat.rows=rows;
+   mat.cols=cols;
+   mat.type=CV_32F;
     std::ifstream txtFile(fileName.c_str());
 
     if(!txtFile.is_open()) {
@@ -117,11 +135,12 @@ cv::Mat readFloatTxtFile(std::string fileName, size_t rows, size_t cols) {
 
     for(size_t r = 0; r < rows; r++) {
         for(size_t c = 0; c < cols; c++) {
-            txtFile >> mat.at<float>(r,c);
+          // txtFile >> mat.at<float>(r,c);
         }
     }
 
     return mat;
+    //return 0;
 }
 
 int main(int argc, char* argv[]) {
@@ -145,11 +164,11 @@ int main(int argc, char* argv[]) {
     }
 
     std::cout << "Reading inputs..." << std::endl;
-    cv::Mat input  = readTxtFile(inputFileName, IMAGE_HEIGHT, IMAGE_WIDTH);
-    cv::Mat coef   = readTxtFile(coefFileName, FILTER_HEIGHT, FILTER_WIDTH);
+    /*cv::*/Mat input  = readTxtFile(inputFileName, IMAGE_HEIGHT, IMAGE_WIDTH);
+   /*cv::Mat*/Mat coef   = readTxtFile(coefFileName, FILTER_HEIGHT, FILTER_WIDTH);
 
-    input /= 32;
-    coef *= 1;
+    //input /= 32;
+    //coef *= 1;
 
    // std::vector<double, aligned_allocator<double>> vecInput;
     double *vecInput;
@@ -169,8 +188,12 @@ int main(int argc, char* argv[]) {
 
     std::cout << "inputBits = " << ceil(log2(inputMax)) << " coefMax = " << ceil(log2(coefMax)) << std::endl;
     long long max_bits = (long long) inputMax * coefMax * FILTER_HEIGHT * FILTER_WIDTH;
-    cv::Mat output(IMAGE_HEIGHT, IMAGE_WIDTH, CV_16S);
-    output.reshape(0);
+   // cv::Mat output(IMAGE_HEIGHT, IMAGE_WIDTH, CV_16S);
+    Mat output;
+    output.rows=IMAGE_HEIGHT;
+    output.cols=IMAGE_WIDTH;
+    output.type=CV_16S;
+    //output.reshape(0);
 
     std::cout << "Max Energy = " << ceil(log2(max_bits)) + 1 << " Bits" << std::endl;
 
@@ -300,22 +323,33 @@ int main(int argc, char* argv[]) {
     //std::cout << "Kernel Duration: " << duration << " ns" <<std::endl;
 //OPENCL HOST CODE AREA ENDS
 
-    std::memcpy(output.data, vecOutput, sizeof(vecOutput)*sizeof(double));
+    std::memcpy(&output, vecOutput, sizeof(vecOutput)*sizeof(double));
 
     short outputMax  = getAbsMax(output, IMAGE_HEIGHT, IMAGE_WIDTH);
     std::cout << "outputBits = " << ceil(log2(outputMax)) << std::endl;
 
-    cv::imwrite("input.bmp", input);
+    /*cv::imwrite("input.bmp",input);
     cv::imwrite("output.bmp", output);
-    cv::imwrite("coef.bmp", coef);
+    cv::imwrite("coef.bmp", coef);*/
+  
+    FILE *fp;
+    fp=fopen("input.bmp","wb");
+    fwrite(&input,1,sizeof(input),fp);
+    fclose(fp);
+    fp=fopen("output.bmp","wb");
+    fwrite(&output,1,sizeof(output),fp);
+    fclose(fp);
+    fp=fopen("coef.bmp","wb");
+    fwrite(&coef,1,sizeof(coef),fp);
+    fclose(fp);
 
-    if(validate) {
+  /* if(validate) {
         std::cout << "Validate" << std::endl;
         std::string goldenFileName(argv[3]);
         cv::Mat golden  = readFloatTxtFile(goldenFileName, IMAGE_HEIGHT, IMAGE_WIDTH);
 
         cv::imwrite("golden.bmp", golden);
-    }
+    }*/
 
     std::cout << "Completed Successfully" << std::endl;
     return EXIT_SUCCESS;
